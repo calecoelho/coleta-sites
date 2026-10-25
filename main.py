@@ -43,7 +43,8 @@ def main():
 
     print("\n=== RESUMO ===")
     for r in resumo:
-        print(f"{r['fonte']}: {r['encontradas']} na lista, {r['novas']} novas, {r['gravadas']} gravadas")
+        print(f"{r['fonte']}: {r['encontradas']} na lista, {r['novas']} novas, "
+              f"{r['descartadas']} descartadas (sem título, url ou data), {r['gravadas']} gravadas")
     if args.dry_run:
         print("(dry-run: nada foi gravado)")
     sys.exit(1 if falhas else 0)  # código 1 avisa um agendador de que algo falhou
