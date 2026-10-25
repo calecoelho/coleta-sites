@@ -1,0 +1,26 @@
+# Disparo automático (OPCIONAL, para ligar depois).
+# Por enquanto só roda quando você clica em "Run workflow" na aba Actions do GitHub.
+# Para agendar, tire o # das duas linhas de "schedule".
+name: Coleta de notícias
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "*/10 * * * *"   # a cada 10 minutos (o GitHub pode atrasar alguns minutos)
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Rodar coleta
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python main.py
