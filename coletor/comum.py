@@ -30,6 +30,10 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 
 
 # ---------------------------------------------------------------- Supabase
+# Colunas da tabela public.news que este projeto preenche.
+COLUNAS = ["title", "url", "source", "published_at", "author", "resumo"]
+
+
 def credenciais():
     # Essa função tenta ler o endereço e a chave do Supabase.
     # Para isso, olha as variáveis SUPABASE_URL e SUPABASE_KEY.
@@ -64,11 +68,17 @@ def enviar_ao_supabase(noticias):
     if not noticias:
         return []
     base, _ = credenciais()
+    # Essa linha tenta deixar todas as notícias com exatamente as mesmas colunas.
+    # Para isso, preenche com vazio (None) o que faltar. O Supabase recusa (erro 400)
+    # um pacote em que uma notícia tem colunas diferentes das outras.
+    noticias = [{c: n.get(c) for c in COLUNAS} for n in noticias]
     r = requests.post(
         f"{base}/rest/v1/news?on_conflict=url",
         headers={**_cabecalho_db(), "Prefer": "resolution=ignore-duplicates,return=representation"},
         data=json.dumps(noticias), timeout=30)
-    r.raise_for_status()
+    if not r.ok:
+        # Mostra o motivo que o Supabase deu, em vez de só "400 Bad Request".
+        raise RuntimeError(f"Supabase recusou a gravação ({r.status_code}): {r.text[:300]}")
     return r.json()
 
 
@@ -173,7 +183,7 @@ def coletar(site, max_novas=40, dry_run=False, pausa=1.0):
     lista = lista[:max_novas]
 
     # 3) Essa parte abre cada matéria nova e completa autor, hora e resumo.
-    prontas = []
+    prontas, descartadas = [], 0
     for item in lista:
         try:
             html = baixar(item["url"])
@@ -186,12 +196,18 @@ def coletar(site, max_novas=40, dry_run=False, pausa=1.0):
         # e mantém o resumo da lista quando ele já existe.
         item.update({k: v for k, v in dados.items()
                      if v and not (k == "resumo" and item.get("resumo"))})
-        print(f"  - {item.get('published_at') or '(sem hora)'} | "
-              f"{item.get('author') or '(sem autor)'} | {item['title']}")
-        prontas.append(item)
+        # Regra do projeto: só grava matéria com título, url e data de publicação.
+        faltando = [nome for nome, chave in (("título", "title"), ("url", "url"),
+                                              ("data", "published_at")) if not item.get(chave)]
+        if faltando:
+            descartadas += 1
+            print(f"  x descartada (sem {', '.join(faltando)}): {item.get('title') or item['url']}")
+        else:
+            print(f"  - {item['published_at']} | {item.get('author') or '(sem autor)'} | {item['title']}")
+            prontas.append(item)
         time.sleep(pausa)  # pausa entre páginas, para não sobrecarregar o site
 
     # 4) Essa parte grava (a não ser no modo de teste).
     gravadas = 0 if dry_run else len(enviar_ao_supabase(prontas))
     return {"fonte": site.FONTE, "encontradas": encontradas, "novas": len(prontas),
-            "gravadas": gravadas}
+            "descartadas": descartadas, "gravadas": gravadas}
