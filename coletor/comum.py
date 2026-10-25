@@ -16,7 +16,15 @@ from dotenv import load_dotenv
 # de ambiente e o .env simplesmente não existe, o que não é problema.
 load_dotenv()
 
-HEADERS_SITE = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+# Cabeçalhos de um Chrome comum. Alguns sites (o UOL, por exemplo) recusam pedidos que
+# não parecem vir de um navegador de verdade.
+HEADERS_SITE = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Upgrade-Insecure-Requests": "1",
+}
 # A coluna published_at não guarda fuso, então gravamos sempre em hora de Brasília.
 FUSO = ZoneInfo("America/Sao_Paulo")
 
